@@ -67,24 +67,6 @@ impl SmithWaterman{
             let (row, col) = max_point;
             let one = self.genome_sequence.char_at(col-1);
             let two = self.read_sequence.char_at(row-1);
-            match last_movement{
-                GraphMovements::Blank  => {
-                    genome_sequence_alignment.push(one);
-                    read_sequence_alignment.push(two);
-                },
-                GraphMovements::Diagonal => {
-                    genome_sequence_alignment.push(one);
-                    read_sequence_alignment.push(two);
-                },
-                GraphMovements::Top => {
-                    genome_sequence_alignment.push(one);
-                    read_sequence_alignment.push('-');
-                },
-                GraphMovements::Left => {
-                    genome_sequence_alignment.push(one);
-                    read_sequence_alignment.push('-');
-                },
-            }
             let top = self.matrix[(row-1, col)];
             let left = self.matrix[(row, col-1)];
             let diagonal = self.matrix[(row-1, col-1)];
@@ -99,6 +81,25 @@ impl SmithWaterman{
                 last_movement = GraphMovements::Top;
                 (row-1, col)
             };
+
+            match last_movement{
+                GraphMovements::Blank  => {
+                    genome_sequence_alignment.push(one);
+                    read_sequence_alignment.push(two);
+                },
+                GraphMovements::Diagonal => {
+                    genome_sequence_alignment.push(one);
+                    read_sequence_alignment.push(two);
+                },
+                GraphMovements::Top => {
+                    genome_sequence_alignment.push('-');
+                    read_sequence_alignment.push(two);
+                },
+                GraphMovements::Left => {
+                    genome_sequence_alignment.push(one);
+                    read_sequence_alignment.push('-');
+                },
+            }
         };
         let x1: String = genome_sequence_alignment.chars().rev().collect();
         let x2: String = read_sequence_alignment.chars().rev().collect();
