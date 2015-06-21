@@ -28,8 +28,12 @@ impl SmithWaterman{
             _ => {0}
         }
     }
-
     pub fn score(&mut self){
+        let max_point = self.set_matrix_loops();
+        self.local_alignment(max_point);
+    }
+
+    pub fn set_matrix_loops(&mut self) -> (usize, usize) {
         let mut max_point = (0,0);
         let mut max = 0;
         for row in (1..self.read_sequence.len()+1){
@@ -50,6 +54,12 @@ impl SmithWaterman{
                 self.matrix[(row, col)] = n;
             }
         }
+        return max_point;
+    }
+
+    fn local_alignment(&self, max_point_value: (usize, usize)) -> (String, String){
+        let mut max_point = max_point_value;
+        let mut max = self.matrix[max_point];
         let mut last_movement = GraphMovements::Blank;
         let mut genome_sequence_alignment = String::new();
         let mut read_sequence_alignment = String::new();
@@ -94,6 +104,7 @@ impl SmithWaterman{
         let x2: String = read_sequence_alignment.chars().rev().collect();
         println!("{:?}",x1);
         println!("{:?}",x2);
+        return (x1,x2)
     }
 }
 
@@ -124,7 +135,7 @@ fn its_debugging() {
     smitty.score();
     println!("{:?}", smitty);
 
-    let mut smitty = SmithWaterman::new( "atgggcatg".to_string(),"atgcatgcatgc".to_string());
+    let mut smitty = SmithWaterman::new( "ACACACTA".to_string(),"AGCACACA".to_string());
     smitty.score();
     println!("{:?}", smitty);
 }
