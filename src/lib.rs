@@ -11,11 +11,13 @@ pub struct SmithWaterman{
     matched: isize,
     missed: isize,
 }
+pub enum GraphMovements {Blank, Left, Top, Diagonal}
 
 impl SmithWaterman{
+
     pub fn new(sequence1: String, sequence2: String) -> SmithWaterman {
         SmithWaterman{matrix: nalgebra::DMat::new_zeros(sequence1.len()+1, sequence2.len()+1),
-            sequence1: sequence1, sequence2: sequence2, matched: 2, missed: -1}
+        sequence1: sequence1, sequence2: sequence2, matched: 2, missed: -1}
     }
 
     fn penalty(&self, value: isize, penalty_value: isize) -> isize{
@@ -41,15 +43,60 @@ impl SmithWaterman{
                     self.penalty(diagonal, self.missed)
                 };
                 let n = std::cmp::max(left, std::cmp::max(top, diagonal_match));
-                if n>=max{
-                    max =n;
+                if n >= max{
+                    max = n;
                     max_point = (row,col);
                 }
                 self.matrix[(row, col)] = n;
             }
         }
+        let mut last_movement = GraphMovements::Blank;
+        let mut sequence1_alignment = String::new();
+        let mut sequence2_alignment = String::new();
+        while max > 0 {
+            let (row, col) = max_point;
+            let one = self.sequence1.char_at(row-1);
+            let two = self.sequence2.char_at(col-1);
+            match last_movement{
+                GraphMovements::Blank  => {
+                    sequence1_alignment.push(one);
+                    sequence2_alignment.push(two);
+                },
+                GraphMovements::Diagonal => {
+                    sequence1_alignment.push(one);
+                    sequence2_alignment.push(two);
+                },
+                GraphMovements::Top => {
+                    sequence1_alignment.push(one);
+                    sequence2_alignment.push('-');
+                },
+                GraphMovements::Left => {
+                    sequence1_alignment.push(one);
+                    sequence2_alignment.push('-');
+                },
+            }
+            let top = self.matrix[(row-1, col)];
+            let left = self.matrix[(row, col-1)];
+            let diagonal = self.matrix[(row-1, col-1)];
+            max  = std::cmp::max(left, std::cmp::max(top, diagonal));
+            max_point = if diagonal == max{
+                last_movement = GraphMovements::Diagonal;
+                (row-1, col-1)
+            } else if left == max{
+                last_movement = GraphMovements::Left;
+                (row, col-1)
+            } else {
+                last_movement = GraphMovements::Top;
+                (row-1, col)
+            };
+        };
+        let x1: String = sequence1_alignment.chars().rev().collect();
+        let x2: String = sequence2_alignment.chars().rev().collect();
+        println!("{:?}",x1);
+        println!("{:?}",x2);
     }
 }
+
 impl Debug for SmithWaterman {
     fn fmt(&self, form:&mut Formatter) -> Result {
         //nrows already has an extra over the sequence counts for the row of zeros
