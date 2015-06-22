@@ -3,10 +3,19 @@ extern crate nalgebra;
 
 use nalgebra::DMat;
 use std::fmt::{Debug, Formatter, Result};
-
+/// The `SmithWaterman` struct
+///
+/// genome_sequence: String
+///
+/// read_sequence: String
+///
+/// matrix:  DMat<isize>
 pub struct SmithWaterman{
+    /// Genome
     genome_sequence: String,
+    /// Compared Genome
     read_sequence: String,
+    /// Matrix used to store data
     matrix:  DMat<isize>,
     matched: isize,
     missed: isize,
@@ -14,7 +23,15 @@ pub struct SmithWaterman{
 pub enum GraphMovements {Blank, Left, Top, Diagonal}
 
 impl SmithWaterman{
-
+    /// Constructs a new `SmithWaterman`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use smith_waterson;
+    ///
+    /// let mut smitty = smith_waterson::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// ```
     pub fn new(genome_sequence: String, read_sequence: String) -> SmithWaterman {
         SmithWaterman{matrix: nalgebra::DMat::new_zeros(read_sequence.len()+1, genome_sequence.len()+1),
         genome_sequence: genome_sequence, read_sequence: read_sequence, matched: 2, missed: -1}
@@ -28,11 +45,35 @@ impl SmithWaterman{
             _ => {0}
         }
     }
+
+    /// Runs the matrix to obtain the optimum local alignment.
+    /// Uses the set_matrix_loops function.
+    /// returns a tuple of strings. The fist is the genome sequence the second is the read
+    /// sequence.
+    /// # Examples
+    ///
+    /// ```
+    /// let mut smitty = smith_waterson::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let alignment = smitty.align();
+    /// ```
     pub fn align(&mut self) -> (String, String){
         let max_point = self.set_matrix_loops();
         return self.local_alignment(max_point);
     }
 
+    /// Fills the matrix with values.
+    /// This uses a naïve double loop to fill the matrix.
+    ///
+    /// returns a tuple of usize. The fist is the row and the second is the column of the largest
+    /// value in the matrix.
+    ///
+    /// This value can also be calculated out from `smitty.matrix`
+    /// # Examples
+    ///
+    /// ```
+    /// let mut smitty = smith_waterson::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let max_point = smitty.set_matrix_loops();
+    /// ```
     pub fn set_matrix_loops(&mut self) -> (usize, usize) {
         let mut max_point = (0,0);
         let mut max = 0;
@@ -84,7 +125,7 @@ impl SmithWaterman{
                 (row-1, col)
             };
 
-            match last_movement{
+            match last_movement {
                 GraphMovements::Blank  => {
                     genome_sequence_alignment.push(one);
                     read_sequence_alignment.push(two);
@@ -142,4 +183,25 @@ fn its_debugging() {
     let alignment = smitty.align();
     println!("{:?}", smitty);
     println!("{:?}", alignment);
+}
+#[test]
+fn it_sets_the_matrix_loop_no_match(){
+    let mut smitty = SmithWaterman::new("ab".to_string(), "cd".to_string());
+    smitty.set_matrix_loops();
+    let alignment = smitty.align();
+    assert_eq!(("".to_string(),"".to_string()), alignment);
+    assert!(smitty.matrix.is_zero());
+}
+
+#[test]
+fn it_sets_the_matrix_loop_one_match(){
+    let mut smitty = SmithWaterman::new("ab".to_string(), "cb".to_string());
+    smitty.set_matrix_loops();
+    assert_eq!(2, smitty.matrix[(2,2)]);
+}
+#[test]
+fn it_sets_aligns_wiki_example(){
+    let mut smitty = SmithWaterman::new( "ACACACTA".to_string(),"AGCACACA".to_string());
+    let alignment = smitty.align();
+    assert_eq!(("A-CACACTA".to_string(), "AGCACAC-A".to_string()), alignment);
 }
