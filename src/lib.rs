@@ -28,9 +28,9 @@ impl SmithWaterman{
             _ => {0}
         }
     }
-    pub fn score(&mut self){
+    pub fn align(&mut self) -> (String, String){
         let max_point = self.set_matrix_loops();
-        self.local_alignment(max_point);
+        return self.local_alignment(max_point);
     }
 
     pub fn set_matrix_loops(&mut self) -> (usize, usize) {
@@ -63,6 +63,8 @@ impl SmithWaterman{
         let mut last_movement = GraphMovements::Blank;
         let mut genome_sequence_alignment = String::new();
         let mut read_sequence_alignment = String::new();
+        genome_sequence_alignment.reserve(self.genome_sequence.len());
+        read_sequence_alignment.reserve(self.read_sequence.len());
         while max > 0 {
             let (row, col) = max_point;
             let one = self.genome_sequence.char_at(col-1);
@@ -101,10 +103,9 @@ impl SmithWaterman{
                 },
             }
         };
+
         let x1: String = genome_sequence_alignment.chars().rev().collect();
         let x2: String = read_sequence_alignment.chars().rev().collect();
-        println!("{:?}",x1);
-        println!("{:?}",x2);
         return (x1,x2)
     }
 }
@@ -133,10 +134,12 @@ impl Debug for SmithWaterman {
 #[test]
 fn its_debugging() {
     let mut smitty = SmithWaterman::new("atgcatgcatgc".to_string(), "atgggcatg".to_string());
-    smitty.score();
+    let alignment = smitty.align();
     println!("{:?}", smitty);
+    println!("{:?}", alignment);
 
     let mut smitty = SmithWaterman::new( "ACACACTA".to_string(),"AGCACACA".to_string());
-    smitty.score();
+    let alignment = smitty.align();
     println!("{:?}", smitty);
+    println!("{:?}", alignment);
 }
