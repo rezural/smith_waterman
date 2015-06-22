@@ -34,6 +34,7 @@
 <a id="smithwaterman-algorithm" class="anchor" href="#smithwaterman-algorithm" aria-hidden="true"><span class="octicon octicon-link"></span></a>Smith–Waterman algorithm</h3>
 
 <pre><code>    let mut smitty = SmithWaterman::new( "ACACACTA".to_string(),
+
                                          "AGCACACA".to_string());
     let alignment = smitty.align();
     println!("{:?}", smitty);
