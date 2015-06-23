@@ -7,7 +7,7 @@ documentation = "https://sbeckeriv.github.io/smith_waterman/target/doc/smith_wat
 homepage = "http://sbeckeriv.github.io/smith_waterman"
 repository = "https://github.com/sbeckeriv/smith_waterman"
 readme = "./README.md"
-keywords = ["waterman", "smith", "smith-waterman", "sequence", "sequence alignment"]
+keywords = ["waterman", "smith", "smith-waterman", "sequence", "alignment"]
 license = "MIT"
 license-file = "./LICENSE-MIT"
 
