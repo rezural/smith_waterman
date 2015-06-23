@@ -1,7 +1,12 @@
 [package]
 name = "smith_waterson"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Stephen Becker IV <github@deathbyescalator.com>"]
+documentation = "http://sbeckeriv.github.io/smith_waterson_rs/docs/smith_waterson/struct.SmithWaterman.html"
+homepage = "http://sbeckeriv.github.io/smith_waterson_rs"
+repository = "https://github.com/sbeckeriv/smith_waterson_rs"
+readme = "./README.md"
+keywords = ["waterson", "smith", "smith-waterson"]
 
 [dependencies]
 nalgebra = "0.2.17"

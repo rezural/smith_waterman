@@ -1,4 +1,4 @@
-# smith_waterson_rs
+# Smith Waterman
 Smith–Waterman algorithm
 
-[http://sbeckeriv.github.io/smith_waterson_rs/](http://sbeckeriv.github.io/smith_waterson_rs/)
+[http://sbeckeriv.github.io/smith_waterman/](http://sbeckeriv.github.io/smith_waterman/)

@@ -278,9 +278,9 @@
     <span class='doccomment'>/// # Examples</span>
     <span class='doccomment'>///</span>
     <span class='doccomment'>/// ```</span>
-    <span class='doccomment'>/// use smith_waterson;</span>
+    <span class='doccomment'>/// use smith_waterman;</span>
     <span class='doccomment'>///</span>
-    <span class='doccomment'>/// let mut smitty = smith_waterson::SmithWaterman::new(&quot;ab&quot;.to_string(), &quot;cb&quot;.to_string());</span>
+    <span class='doccomment'>/// let mut smitty = smith_waterman::SmithWaterman::new(&quot;ab&quot;.to_string(), &quot;cb&quot;.to_string());</span>
     <span class='doccomment'>/// ```</span>
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span>(<span class='ident'>genome_sequence</span>: <span class='ident'>String</span>, <span class='ident'>read_sequence</span>: <span class='ident'>String</span>) <span class='op'>-&gt;</span> <span class='ident'>SmithWaterman</span> {
         <span class='ident'>SmithWaterman</span>{<span class='ident'>matrix</span>: <span class='ident'>nalgebra</span>::<span class='ident'>DMat</span>::<span class='ident'>new_zeros</span>(<span class='ident'>read_sequence</span>.<span class='ident'>len</span>()<span class='op'>+</span><span class='number'>1</span>, <span class='ident'>genome_sequence</span>.<span class='ident'>len</span>()<span class='op'>+</span><span class='number'>1</span>),
@@ -303,7 +303,7 @@
     <span class='doccomment'>/// # Examples</span>
     <span class='doccomment'>///</span>
     <span class='doccomment'>/// ```</span>
-    <span class='doccomment'>/// let mut smitty = smith_waterson::SmithWaterman::new(&quot;ab&quot;.to_string(), &quot;cb&quot;.to_string());</span>
+    <span class='doccomment'>/// let mut smitty = smith_waterman::SmithWaterman::new(&quot;ab&quot;.to_string(), &quot;cb&quot;.to_string());</span>
     <span class='doccomment'>/// let alignment = smitty.align();</span>
     <span class='doccomment'>/// ```</span>
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>align</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> (<span class='ident'>String</span>, <span class='ident'>String</span>){
@@ -321,7 +321,7 @@
     <span class='doccomment'>/// # Examples</span>
     <span class='doccomment'>///</span>
     <span class='doccomment'>/// ```</span>
-    <span class='doccomment'>/// let mut smitty = smith_waterson::SmithWaterman::new(&quot;ab&quot;.to_string(), &quot;cb&quot;.to_string());</span>
+    <span class='doccomment'>/// let mut smitty = smith_waterman::SmithWaterman::new(&quot;ab&quot;.to_string(), &quot;cb&quot;.to_string());</span>
     <span class='doccomment'>/// let max_point = smitty.set_matrix_loops();</span>
     <span class='doccomment'>/// ```</span>
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>set_matrix_loops</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> (<span class='ident'>usize</span>, <span class='ident'>usize</span>) {

@@ -28,9 +28,9 @@ impl SmithWaterman{
     /// # Examples
     ///
     /// ```
-    /// use smith_waterson;
+    /// use smith_waterman;
     ///
-    /// let mut smitty = smith_waterson::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
     /// ```
     pub fn new(genome_sequence: String, read_sequence: String) -> SmithWaterman {
         SmithWaterman{matrix: nalgebra::DMat::new_zeros(read_sequence.len()+1, genome_sequence.len()+1),
@@ -53,7 +53,7 @@ impl SmithWaterman{
     /// # Examples
     ///
     /// ```
-    /// let mut smitty = smith_waterson::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
     /// let alignment = smitty.align();
     /// ```
     pub fn align(&mut self) -> (String, String){
@@ -71,7 +71,7 @@ impl SmithWaterman{
     /// # Examples
     ///
     /// ```
-    /// let mut smitty = smith_waterson::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
     /// let max_point = smitty.set_matrix_loops();
     /// ```
     pub fn set_matrix_loops(&mut self) -> (usize, usize) {
