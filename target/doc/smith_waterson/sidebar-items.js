@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["GraphMovements",""]],"struct":[["SmithWaterman","The `SmithWaterman` struct"]]});
