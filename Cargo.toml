@@ -2,11 +2,14 @@
 name = "smith_waterman"
 version = "0.0.1"
 authors = ["Stephen Becker IV <github@deathbyescalator.com>"]
+description = "The Smith–Waterman algorithm performs local sequence alignment."
 documentation = "https://sbeckeriv.github.io/smith_waterman/target/doc/smith_waterman/struct.SmithWaterman.html"
 homepage = "http://sbeckeriv.github.io/smith_waterman"
 repository = "https://github.com/sbeckeriv/smith_waterman"
 readme = "./README.md"
-keywords = ["waterman", "smith", "smith-waterman"]
+keywords = ["waterman", "smith", "smith-waterman", "sequence", "sequence alignment"]
+license = "MIT"
+license-file = "./LICENSE-MIT"
 
 [dependencies]
 nalgebra = "0.2.17"
