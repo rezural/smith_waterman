@@ -1,4 +1,7 @@
 #![feature(str_char)]
+#![feature(test)]
+
+extern crate test;
 extern crate nalgebra;
 
 use nalgebra::DMat;
@@ -33,8 +36,9 @@ impl SmithWaterman{
     /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
     /// ```
     pub fn new(genome_sequence: String, read_sequence: String) -> SmithWaterman {
-        SmithWaterman{matrix: nalgebra::DMat::new_zeros(read_sequence.len()+1, genome_sequence.len()+1),
-        genome_sequence: genome_sequence, read_sequence: read_sequence, matched: 2, missed: -1}
+        let matrix = DMat::new_zeros(0,0);
+        SmithWaterman{matrix: matrix, genome_sequence: genome_sequence,
+        read_sequence: read_sequence, matched: 2, missed: -1}
     }
 
     fn penalty(&self, value: isize, penalty_value: isize) -> isize{
@@ -61,6 +65,63 @@ impl SmithWaterman{
         return self.local_alignment(max_point);
     }
 
+    pub fn align_fn(&mut self) -> (String, String){
+        let max_point = self.set_matrix_fn();
+        return self.local_alignment(max_point);
+    }
+
+    /// Fills the matrix with values.
+    /// This uses a naïve double loop to fill the matrix.
+    ///
+    /// # Examples
+    /// ```
+    /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let max_point = smitty.set_matrix_loops();
+    /// ```
+    pub fn set_matrix_fn(&mut self) -> (usize, usize) {
+        let mut max_point = (0,0);
+        let mut max = 0;
+
+        let rows = self.read_sequence.len()+1;
+        let cols = self.genome_sequence.len()+1;
+        self.matrix = nalgebra::DMat::new_zeros(self.read_sequence.len()+1, self.genome_sequence.len()+1);
+        for i in (0..rows * cols){
+            let col = i / rows;
+            let row = i - col * rows;
+            let left_value = if col>=1 {self.matrix[(row, col-1)]} else {0};
+            let top_value = if row>=1 {self.matrix[(row-1, col)]} else {0};
+            let diagonal_value = if row>=1 && col>=1 {self.matrix[(row-1, col-1)]} else {0};
+            let left = self.penalty(left_value, self.missed);
+            let top = self.penalty(top_value, self.missed);
+            let diagonal_match = if row==0 || col ==0{
+               0
+            }else if self.read_sequence.char_at(row-1) == self.genome_sequence.char_at(col-1){
+                self.penalty(diagonal_value, self.matched)
+            }else{
+                self.penalty(diagonal_value, self.missed)
+            };
+            let n = std::cmp::max(left, std::cmp::max(top, diagonal_match));
+            if n >= max{
+                max = n;
+                max_point = (row,col);
+            }
+            self.matrix[(row, col)]=n;
+        }
+
+        return max_point;
+    }
+    fn cacluated_movement(self, row: usize, col: usize) -> isize{
+        let left = self.penalty(self.matrix[(row, col-1)], self.missed);
+        let top = self.penalty(self.matrix[(row-1, col)], self.missed);
+        let diagonal = self.matrix[(row-1, col-1)];
+        let diagonal_match = if self.read_sequence.char_at(row-1) == self.genome_sequence.char_at(col-1){
+            self.penalty(diagonal, self.matched)
+        }else{
+            self.penalty(diagonal, self.missed)
+        };
+        std::cmp::max(left, std::cmp::max(top, diagonal_match))
+    }
+
     /// Fills the matrix with values.
     /// This uses a naïve double loop to fill the matrix.
     ///
@@ -75,6 +136,7 @@ impl SmithWaterman{
     /// let max_point = smitty.set_matrix_loops();
     /// ```
     pub fn set_matrix_loops(&mut self) -> (usize, usize) {
+        self.matrix = nalgebra::DMat::new_zeros(self.read_sequence.len()+1, self.genome_sequence.len()+1);
         let mut max_point = (0,0);
         let mut max = 0;
         for row in (1..self.read_sequence.len()+1){
@@ -180,28 +242,107 @@ fn its_debugging() {
     println!("{:?}", alignment);
 
     let mut smitty = SmithWaterman::new( "ACACACTA".to_string(),"AGCACACA".to_string());
-    let alignment = smitty.align();
-    println!("{:?}", smitty);
-    println!("{:?}", alignment);
+    let alignment = smitty.align_fn();
+    println!("fn::{:?}", smitty);
+    println!("fn::{:?}", alignment);
+
 }
-#[test]
-fn it_sets_the_matrix_loop_no_match(){
-    let mut smitty = SmithWaterman::new("ab".to_string(), "cd".to_string());
-    smitty.set_matrix_loops();
-    let alignment = smitty.align();
-    assert_eq!(("".to_string(),"".to_string()), alignment);
-    assert!(smitty.matrix.is_zero());
+mod tests{
+    use super::*;
+    use test::Bencher;
+
+    #[test]
+    fn it_sets_the_matrix_fn_no_match(){
+        let mut smitty = SmithWaterman::new("ab".to_string(), "cd".to_string());
+        smitty.set_matrix_fn();
+        let alignment = smitty.align();
+        assert_eq!(("".to_string(),"".to_string()), alignment);
+        assert!(smitty.matrix.is_zero());
+    }
+    #[test]
+    fn it_sets_the_matrix_loop_no_match(){
+        let mut smitty = SmithWaterman::new("ab".to_string(), "cd".to_string());
+        smitty.set_matrix_loops();
+        let alignment = smitty.align();
+        assert_eq!(("".to_string(),"".to_string()), alignment);
+        assert!(smitty.matrix.is_zero());
+    }
+
+    #[test]
+    fn it_sets_the_matrix_fn_one_match(){
+        let mut smitty = SmithWaterman::new("ab".to_string(), "cb".to_string());
+        smitty.set_matrix_fn();
+        assert_eq!(2, smitty.matrix[(2,2)]);
+    }
+    #[test]
+    fn it_sets_the_matrix_loop_one_match(){
+        let mut smitty = SmithWaterman::new("ab".to_string(), "cb".to_string());
+        smitty.set_matrix_loops();
+        assert_eq!(2, smitty.matrix[(2,2)]);
+    }
+    #[test]
+    fn it_sets_aligns_wiki_example(){
+        let mut smitty = SmithWaterman::new( "ACACACTA".to_string(),"AGCACACA".to_string());
+        let alignment = smitty.align();
+        assert_eq!(("A-CACACTA".to_string(), "AGCACAC-A".to_string()), alignment);
+    }
+
+    fn genome_sequence_many(count: isize) -> String{
+        let mut mill = "AACACACT".to_string();
+        for _ in 1..count{
+            mill.push_str("AACACACT");
+        }
+        mill
+    }
+
+    fn read_sequence_many(count: isize) -> String{
+        let mut mill = "AAGCACAC".to_string();
+        for _ in 1..count{
+            mill.push_str("AAGCACAC");
+        }
+        mill
+    }
+    fn genome_sequence() -> String{
+        "AACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTAACACACTACACACTA".to_string()
+    }
+
+    fn read_sequence() -> String{
+        "AAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAGCACACA".to_string()
+    }
+    #[bench]
+    fn bench_maxtrix_loops(b: &mut Bencher) {
+        let mut smitty = SmithWaterman::new(genome_sequence(), read_sequence());
+        b.iter(|| smitty.set_matrix_loops());
+    }
+
+    #[bench]
+    fn bench_maxtrix_loops_many(b: &mut Bencher) {
+        return;
+        let mut smitty = SmithWaterman::new(genome_sequence_many(1_000), read_sequence_many(1_000));
+        b.iter(|| smitty.set_matrix_loops());
+    }
+    #[bench]
+    fn bench_maxtrix_loops_many_many(b: &mut Bencher) {
+        return;
+        let mut smitty = SmithWaterman::new(genome_sequence_many(10_000), read_sequence_many(10_000));
+        b.iter(|| smitty.set_matrix_loops());
+    }
+    #[bench]
+    fn bench_maxtrix_fn(b: &mut Bencher) {
+        let mut smitty = SmithWaterman::new(genome_sequence(), read_sequence());
+        b.iter(|| smitty.set_matrix_fn());
+    }
+    #[bench]
+    fn bench_maxtrix_fn_many(b: &mut Bencher) {
+        return;
+        let mut smitty = SmithWaterman::new(genome_sequence_many(1_000), read_sequence_many(1_000));
+        b.iter(|| smitty.set_matrix_fn());
+    }
+    #[bench]
+    fn bench_maxtrix_fn_many_many(b: &mut Bencher) {
+        return;
+        let mut smitty = SmithWaterman::new(genome_sequence_many(10_000), read_sequence_many(10_000));
+        b.iter(|| smitty.set_matrix_fn());
+    }
 }
 
-#[test]
-fn it_sets_the_matrix_loop_one_match(){
-    let mut smitty = SmithWaterman::new("ab".to_string(), "cb".to_string());
-    smitty.set_matrix_loops();
-    assert_eq!(2, smitty.matrix[(2,2)]);
-}
-#[test]
-fn it_sets_aligns_wiki_example(){
-    let mut smitty = SmithWaterman::new( "ACACACTA".to_string(),"AGCACACA".to_string());
-    let alignment = smitty.align();
-    assert_eq!(("A-CACACTA".to_string(), "AGCACAC-A".to_string()), alignment);
-}
