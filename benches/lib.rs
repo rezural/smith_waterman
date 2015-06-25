@@ -34,14 +34,12 @@ mod tests{
 
     #[bench]
     fn bench_maxtrix_loops_many(b: &mut Bencher) {
-        return;
         let mut smitty = SmithWaterman::new(genome_sequence_many(1_000), read_sequence_many(1_000));
         b.iter(|| smitty.set_matrix_loops());
     }
     #[bench]
     fn bench_maxtrix_loops_many_many(b: &mut Bencher) {
-        return;
-        let mut smitty = SmithWaterman::new(genome_sequence_many(10_000), read_sequence_many(10_000));
+        let mut smitty = SmithWaterman::new(genome_sequence_many(10_000), read_sequence_many(1_000));
         b.iter(|| smitty.set_matrix_loops());
     }
     #[bench]
@@ -51,14 +49,12 @@ mod tests{
     }
     #[bench]
     fn bench_maxtrix_fn_many(b: &mut Bencher) {
-        return;
         let mut smitty = SmithWaterman::new(genome_sequence_many(1_000), read_sequence_many(1_000));
         b.iter(|| smitty.set_matrix_fn());
     }
     #[bench]
     fn bench_maxtrix_fn_many_many(b: &mut Bencher) {
-        return;
-        let mut smitty = SmithWaterman::new(genome_sequence_many(10_000), read_sequence_many(10_000));
+        let mut smitty = SmithWaterman::new(genome_sequence_many(10_000), read_sequence_many(1_000));
         b.iter(|| smitty.set_matrix_fn());
     }
 }

@@ -1,8 +1,11 @@
 #![feature(str_char)]
 extern crate nalgebra;
-
 use nalgebra::DMat;
 use std::fmt::{Debug, Formatter, Result};
+use std::thread;
+use std::sync::mpsc;
+use std::collections::HashSet;
+
 /// The `SmithWaterman` struct
 ///
 /// genome_sequence: String
@@ -85,19 +88,7 @@ impl SmithWaterman{
         for i in (0..rows * cols){
             let col = i / rows;
             let row = i - col * rows;
-            let left_value = if col>=1 {self.matrix[(row, col-1)]} else {0};
-            let top_value = if row>=1 {self.matrix[(row-1, col)]} else {0};
-            let diagonal_value = if row>=1 && col>=1 {self.matrix[(row-1, col-1)]} else {0};
-            let left = self.penalty(left_value, self.missed);
-            let top = self.penalty(top_value, self.missed);
-            let diagonal_match = if row==0 || col ==0{
-               0
-            }else if self.read_sequence.char_at(row-1) == self.genome_sequence.char_at(col-1){
-                self.penalty(diagonal_value, self.matched)
-            }else{
-                self.penalty(diagonal_value, self.missed)
-            };
-            let n = std::cmp::max(left, std::cmp::max(top, diagonal_match));
+            let n = self.calculated_movement(row, col);
             if n >= max{
                 max = n;
                 max_point = (row,col);
@@ -108,16 +99,18 @@ impl SmithWaterman{
         return max_point;
     }
 
-    fn cacluated_movement(self, row: usize, col: usize) -> isize{
-        let left = self.penalty(self.matrix[(row, col-1)], self.missed);
-        let top = self.penalty(self.matrix[(row-1, col)], self.missed);
-        let diagonal = self.matrix[(row-1, col-1)];
-        let diagonal_match = if self.read_sequence.char_at(row-1) == self.genome_sequence.char_at(col-1){
-            self.penalty(diagonal, self.matched)
-        }else{
-            self.penalty(diagonal, self.missed)
-        };
-        std::cmp::max(left, std::cmp::max(top, diagonal_match))
+    fn calculated_movement(&self, row: usize, col: usize) -> isize{
+            let left = if col>=1 {self.penalty(self.matrix[(row, col-1)], self.missed)} else {0};
+            let top = if row>=1 {self.penalty(self.matrix[(row-1, col)], self.missed)} else {0};
+            let diagonal_value = if row>=1 && col>=1 {self.matrix[(row-1, col-1)]} else {0};
+            let diagonal_match = if row == 0 || col == 0{
+               0
+            }else if self.read_sequence.char_at(row-1) == self.genome_sequence.char_at(col-1){
+                self.penalty(diagonal_value, self.matched)
+            }else{
+                self.penalty(diagonal_value, self.missed)
+            };
+            std::cmp::max(left, std::cmp::max(top, diagonal_match))
     }
 
     /// Fills the matrix with values.
@@ -139,15 +132,7 @@ impl SmithWaterman{
         let mut max = 0;
         for row in (1..self.read_sequence.len()+1){
             for col in (1..self.genome_sequence.len()+1){
-                let left = self.penalty(self.matrix[(row, col-1)], self.missed);
-                let top = self.penalty(self.matrix[(row-1, col)], self.missed);
-                let diagonal = self.matrix[(row-1, col-1)];
-                let diagonal_match = if self.read_sequence.char_at(row-1) == self.genome_sequence.char_at(col-1){
-                    self.penalty(diagonal, self.matched)
-                }else{
-                    self.penalty(diagonal, self.missed)
-                };
-                let n = std::cmp::max(left, std::cmp::max(top, diagonal_match));
+                let n = self.calculated_movement(row, col);
                 if n >= max{
                     max = n;
                     max_point = (row,col);

@@ -9,7 +9,6 @@ mod tests{
         smitty.set_matrix_fn();
         let alignment = smitty.align();
         assert_eq!(("".to_string(),"".to_string()), alignment);
-        assert!(smitty.matrix.is_zero());
     }
     #[test]
     fn it_sets_the_matrix_loop_no_match(){
@@ -17,7 +16,6 @@ mod tests{
         smitty.set_matrix_loops();
         let alignment = smitty.align();
         assert_eq!(("".to_string(),"".to_string()), alignment);
-        assert!(smitty.matrix.is_zero());
     }
 
     #[test]
