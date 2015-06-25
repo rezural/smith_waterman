@@ -65,18 +65,33 @@ impl SmithWaterman{
         return self.local_alignment(max_point);
     }
 
+    /// Runs the matrix to obtain the optimum local alignment.
+    /// Uses the set_matrix_fn function.
+    /// returns a tuple of strings. The fist is the genome sequence the second is the read
+    /// sequence.
+    ///
+    /// In benchmarks this function can be 2x faster. Tested with a 70k and 7k string. < Caveat
+    /// Emptor>
+    /// # Examples
+    ///
+    /// ```
+    /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let alignment = smitty.align_fn();
+    /// ```
     pub fn align_fn(&mut self) -> (String, String){
         let max_point = self.set_matrix_fn();
         return self.local_alignment(max_point);
     }
 
     /// Fills the matrix with values.
-    /// This uses a naïve double loop to fill the matrix.
+    /// This uses a single loop and calculates the correct col and row on the fly.
+    /// In benchmarks this function can be 2x faster. Tested with a 70k and 7k string. < Caveat
+    /// Emptor>
     ///
     /// # Examples
     /// ```
     /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
-    /// let max_point = smitty.set_matrix_loops();
+    /// let max_point = smitty.set_matrix_fn();
     /// ```
     pub fn set_matrix_fn(&mut self) -> (usize, usize) {
         let mut max_point = (0,0);
