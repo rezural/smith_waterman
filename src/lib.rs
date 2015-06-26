@@ -1,7 +1,9 @@
 #![feature(str_char)]
+#![feature(negate_unsigned)]
 extern crate nalgebra;
 use nalgebra::DMat;
 use std::fmt::{Debug, Formatter, Result};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::thread;
 use std::sync::mpsc;
 use std::collections::HashSet;
@@ -24,7 +26,12 @@ pub struct SmithWaterman{
     pub missed: isize,
 }
 pub enum GraphMovements {Blank, Left, Top, Diagonal}
-
+struct SmithWatermanThreadedData{
+    pub row: usize,
+    pub col: usize,
+    pub value: isize
+}
+unsafe impl Sync for SmithWatermanThreadedData { }
 impl SmithWaterman{
     /// Constructs a new `SmithWaterman`.
     ///
@@ -114,18 +121,68 @@ impl SmithWaterman{
         return max_point;
     }
 
-    fn calculated_movement(&self, row: usize, col: usize) -> isize{
-            let left = if col>=1 {self.penalty(self.matrix[(row, col-1)], self.missed)} else {0};
-            let top = if row>=1 {self.penalty(self.matrix[(row-1, col)], self.missed)} else {0};
-            let diagonal_value = if row>=1 && col>=1 {self.matrix[(row-1, col-1)]} else {0};
-            let diagonal_match = if row == 0 || col == 0{
-               0
-            }else if self.read_sequence.char_at(row-1) == self.genome_sequence.char_at(col-1){
-                self.penalty(diagonal_value, self.matched)
+    fn threaded_calculated_movement(&self, sender: &Sender<SmithWatermanThreadedData>, receiver: &Receiver<SmithWatermanThreadedData>){
+        loop {
+            let thread_data = receiver.recv().unwrap();
+            if thread_data.value < 0 { break; }
+            let n = self.calculated_movement(thread_data.row, thread_data.col);
+            sender.send(SmithWatermanThreadedData{ row: thread_data.row,
+                col: thread_data.col, value: n});
+        }
+    }
+
+    pub fn set_matrix_thread(&mut self) -> (usize, usize) {
+        let mut max_point = (0,0);
+        let mut max = 0;
+        let thread_counter = 0;
+        let seen_locations: HashSet<(usize, usize)> = HashSet::new();
+        let (fromParentSender, fromParentReceiver) = channel();
+        let (fromChildSender, fromChildReceiver) = channel();
+        thread::spawn(|| {
+            self.threaded_calculated_movement(&fromChildSender, &fromParentReceiver);
+        });
+        let rows = self.read_sequence.len()+1;
+        let cols = self.genome_sequence.len()+1;
+        self.matrix = nalgebra::DMat::new_zeros(self.read_sequence.len()+1, self.genome_sequence.len()+1);
+
+        fromParentSender.send(SmithWatermanThreadedData{ row: 0,
+            col: 0, value: 0});
+
+        loop{
+            let thread_response = fromChildReceiver.recv().unwrap();
+            if thread_response.value >= max{
+                max = thread_response.value;
+                max_point = (thread_response.row, thread_response.col);
+            }
+            self.matrix[(thread_response.row, thread_response.col)]= thread_response.value;
+            if thread_response.row+1<self.matrix.nrows(){
+                fromParentSender.send(SmithWatermanThreadedData{ row: thread_response.row+1,
+                        col: thread_response.col, value: 0});
+            }else if thread_response.col+1 < self.matrix.ncols(){
+            fromParentSender.send( SmithWatermanThreadedData{ row: thread_response.row+1,
+                        col: thread_response.col, value: 0});
             }else{
-                self.penalty(diagonal_value, self.missed)
-            };
-            std::cmp::max(left, std::cmp::max(top, diagonal_match))
+                fromParentSender.send(SmithWatermanThreadedData{ row: -1,
+                        col: -1, value: -1});
+                break;
+            }
+        }
+
+        return max_point;
+    }
+
+    fn calculated_movement(&self, row: usize, col: usize) -> isize{
+        let left = if col>=1 {self.penalty(self.matrix[(row, col-1)], self.missed)} else {0};
+        let top = if row>=1 {self.penalty(self.matrix[(row-1, col)], self.missed)} else {0};
+        let diagonal_value = if row>=1 && col>=1 {self.matrix[(row-1, col-1)]} else {0};
+        let diagonal_match = if row == 0 || col == 0{
+            0
+        }else if self.read_sequence.char_at(row-1) == self.genome_sequence.char_at(col-1){
+            self.penalty(diagonal_value, self.matched)
+        }else{
+            self.penalty(diagonal_value, self.missed)
+        };
+        std::cmp::max(left, std::cmp::max(top, diagonal_match))
     }
 
     /// Fills the matrix with values.
