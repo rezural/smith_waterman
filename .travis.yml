@@ -1,0 +1,24 @@
+language: rust
+rust: nightly
+script:
+  - ./configure --local-rust-root=`pwd`/rustc
+  - make
+  - make test
+  - make distcheck
+  - make doc
+after_success: |
+  [ $TRAVIS_BRANCH = master ] &&
+  [ $TRAVIS_PULL_REQUEST = false ] &&
+  [ $(uname -s) = Linux ] &&
+  sudo pip install ghp-import &&
+  ghp-import -n target/doc &&
+  git push -f https://${TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+env:
+  global:
+os:
+  - linux
+  - osx
+
+branches:
+  only:
+    - master

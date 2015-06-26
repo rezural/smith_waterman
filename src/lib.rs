@@ -70,7 +70,7 @@ impl SmithWaterman{
     /// returns a tuple of strings. The fist is the genome sequence the second is the read
     /// sequence.
     ///
-    /// In benchmarks this function can be 2x faster. Tested with a 70k and 7k string. < Caveat
+    /// In benchmarks this function can be 2x faster. Tested with a 70k and 7k string. <Caveat
     /// Emptor>
     /// # Examples
     ///
@@ -85,7 +85,7 @@ impl SmithWaterman{
 
     /// Fills the matrix with values.
     /// This uses a single loop and calculates the correct col and row on the fly.
-    /// In benchmarks this function can be 2x faster. Tested with a 70k and 7k string. < Caveat
+    /// In benchmarks this function can be 2x faster. Tested with a 70k and 7k string. <Caveat
     /// Emptor>
     ///
     /// # Examples
