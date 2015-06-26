@@ -157,13 +157,13 @@ impl SmithWaterman{
             self.matrix[(thread_response.row, thread_response.col)]= thread_response.value;
             if thread_response.row+1<self.matrix.nrows(){
                 fromParentSender.send(SmithWatermanThreadedData{ row: thread_response.row+1,
-                        col: thread_response.col, value: 0});
+                    col: thread_response.col, value: 0});
             }else if thread_response.col+1 < self.matrix.ncols(){
-            fromParentSender.send( SmithWatermanThreadedData{ row: thread_response.row+1,
-                        col: thread_response.col, value: 0});
+                fromParentSender.send( SmithWatermanThreadedData{ row: thread_response.row+1,
+                    col: thread_response.col, value: 0});
             }else{
                 fromParentSender.send(SmithWatermanThreadedData{ row: -1,
-                        col: -1, value: -1});
+                    col: -1, value: -1});
                 break;
             }
         }
