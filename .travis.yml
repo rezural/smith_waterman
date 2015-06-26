@@ -1,7 +1,6 @@
 language: rust
 rust: nightly
 script:
-  - ./configure --local-rust-root=`pwd`/rustc
   - cargo build
   - cargo test
 env:
