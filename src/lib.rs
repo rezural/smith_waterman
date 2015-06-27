@@ -121,14 +121,19 @@ impl SmithWaterman{
         return max_point;
     }
 
-    fn threaded_calculated_movement(&self, sender: &Sender<SmithWatermanThreadedData>, receiver: &Receiver<SmithWatermanThreadedData>){
-        loop {
-            let thread_data = receiver.recv().unwrap();
-            if thread_data.value < 0 { break; }
-            let n = self.calculated_movement(thread_data.row, thread_data.col);
-            sender.send(SmithWatermanThreadedData{ row: thread_data.row,
-                col: thread_data.col, value: n});
-        }
+    fn threaded_calculated_movement(smith_waterman: &SmithWaterman, row: usize, col: usize) ->
+        isize{
+        let left = if col>=1 {smith_waterman.penalty(smith_waterman.matrix[(row, col-1)], smith_waterman.missed)} else {0};
+        let top = if row>=1 {smith_waterman.penalty(smith_waterman.matrix[(row-1, col)], smith_waterman.missed)} else {0};
+        let diagonal_value = if row>=1 && col>=1 {smith_waterman.matrix[(row-1, col-1)]} else {0};
+        let diagonal_match = if row == 0 || col == 0{
+            0
+        }else if smith_waterman.read_sequence.char_at(row-1) == smith_waterman.genome_sequence.char_at(col-1){
+            smith_waterman.penalty(diagonal_value, smith_waterman.matched)
+        }else{
+            smith_waterman.penalty(diagonal_value, smith_waterman.missed)
+        };
+        std::cmp::max(left, std::cmp::max(top, diagonal_match))
     }
 
     pub fn set_matrix_thread(&mut self) -> (usize, usize) {
@@ -138,13 +143,21 @@ impl SmithWaterman{
         let seen_locations: HashSet<(usize, usize)> = HashSet::new();
         let (fromParentSender, fromParentReceiver) = channel();
         let (fromChildSender, fromChildReceiver) = channel();
-        thread::spawn(|| {
-            self.threaded_calculated_movement(&fromChildSender, &fromParentReceiver);
-        });
-        let rows = self.read_sequence.len()+1;
-        let cols = self.genome_sequence.len()+1;
-        self.matrix = nalgebra::DMat::new_zeros(self.read_sequence.len()+1, self.genome_sequence.len()+1);
+        let thread_sender = fromChildSender.clone();
 
+        let guard = thread::scoped(move || {
+            for thread_data in fromParentReceiver{
+                let data: SmithWatermanThreadedData = thread_data;
+                let row: usize = data.row;
+                let col: usize = data.col;
+                let n = SmithWaterman::threaded_calculated_movement(self, row, col);
+                thread_sender.send(SmithWatermanThreadedData{ row: row,
+                    col: col, value: n});
+            }
+        });
+
+
+        self.matrix = nalgebra::DMat::new_zeros(self.read_sequence.len()+1, self.genome_sequence.len()+1);
         fromParentSender.send(SmithWatermanThreadedData{ row: 0,
             col: 0, value: 0});
 
@@ -155,19 +168,10 @@ impl SmithWaterman{
                 max_point = (thread_response.row, thread_response.col);
             }
             self.matrix[(thread_response.row, thread_response.col)]= thread_response.value;
-            if thread_response.row+1<self.matrix.nrows(){
-                fromParentSender.send(SmithWatermanThreadedData{ row: thread_response.row+1,
-                    col: thread_response.col, value: 0});
-            }else if thread_response.col+1 < self.matrix.ncols(){
-                fromParentSender.send( SmithWatermanThreadedData{ row: thread_response.row+1,
-                    col: thread_response.col, value: 0});
-            }else{
-                fromParentSender.send(SmithWatermanThreadedData{ row: -1,
-                    col: -1, value: -1});
-                break;
-            }
+            break;
         }
 
+        guard.join();
         return max_point;
     }
 
