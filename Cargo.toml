@@ -1,6 +1,6 @@
 [package]
 name = "smith_waterman"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Stephen Becker IV <github@deathbyescalator.com>"]
 description = "The Smith–Waterman algorithm performs local sequence alignment."
 documentation = "https://sbeckeriv.github.io/smith_waterman/target/doc/smith_waterman/struct.SmithWaterman.html"

@@ -1,10 +1,6 @@
-#![feature(str_char)]
 extern crate nalgebra;
 use nalgebra::DMat;
 use std::fmt::{Debug, Formatter, Result};
-use std::thread;
-use std::sync::mpsc;
-use std::collections::HashSet;
 
 /// The `SmithWaterman` struct
 ///
@@ -13,11 +9,11 @@ use std::collections::HashSet;
 /// read_sequence: String
 ///
 /// matrix:  DMat<isize>
-pub struct SmithWaterman{
+pub struct SmithWaterman {
     /// Genome
-    pub genome_sequence: String,
+    pub genome_sequence: Vec<char>,
     /// Compared Genome
-    pub  read_sequence: String,
+    pub  read_sequence:  Vec<char>,
     /// Matrix used to store data
     pub matrix:  DMat<isize>,
     pub matched: isize,
@@ -37,6 +33,21 @@ impl SmithWaterman{
     /// ```
     pub fn new(genome_sequence: String, read_sequence: String) -> SmithWaterman {
         let matrix = DMat::new_zeros(0,0);
+        SmithWaterman{matrix: matrix, genome_sequence: genome_sequence.chars().collect(),
+        read_sequence: read_sequence.chars().collect(), matched: 2, missed: -1}
+    }
+
+    /// Constructs a new `SmithWaterman`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use smith_waterman;
+    ///
+    /// let mut smitty = smith_waterman::SmithWaterman::new_chars("ab".chars().collect(), "cb".chars().collect());
+    /// ```
+    pub fn new_chars(genome_sequence: Vec<char>, read_sequence: Vec<char>) -> SmithWaterman {
+        let matrix = DMat::new_zeros(0,0);
         SmithWaterman{matrix: matrix, genome_sequence: genome_sequence,
         read_sequence: read_sequence, matched: 2, missed: -1}
     }
@@ -54,6 +65,7 @@ impl SmithWaterman{
     /// Uses the set_matrix_loops function.
     /// returns a tuple of strings. The fist is the genome sequence the second is the read
     /// sequence.
+    /// Faster in smaller sets: https://gist.github.com/sbeckeriv/d9d2c03b19178a888c32
     /// # Examples
     ///
     /// ```
@@ -72,6 +84,7 @@ impl SmithWaterman{
     ///
     /// In benchmarks this function can be 2x faster. Tested with a 70k and 7k string. <Caveat
     /// Emptor>
+    /// https://gist.github.com/sbeckeriv/d9d2c03b19178a888c32
     /// # Examples
     ///
     /// ```
@@ -85,8 +98,12 @@ impl SmithWaterman{
 
     /// Fills the matrix with values.
     /// This uses a single loop and calculates the correct col and row on the fly.
+    /// returns a tuple of usize. The fist is the row and the second is the column of the largest
+    /// value in the matrix.
+    /// This value can also be calculated out from `smitty.matrix`
     /// In benchmarks this function can be 2x faster. Tested with a 70k and 7k string. <Caveat
     /// Emptor>
+    /// https://gist.github.com/sbeckeriv/d9d2c03b19178a888c32
     ///
     /// # Examples
     /// ```
@@ -96,7 +113,6 @@ impl SmithWaterman{
     pub fn set_matrix_fn(&mut self) -> (usize, usize) {
         let mut max_point = (0,0);
         let mut max = 0;
-
         let rows = self.read_sequence.len()+1;
         let cols = self.genome_sequence.len()+1;
         self.matrix = nalgebra::DMat::new_zeros(self.read_sequence.len()+1, self.genome_sequence.len()+1);
@@ -110,22 +126,21 @@ impl SmithWaterman{
             }
             self.matrix[(row, col)]=n;
         }
-
         return max_point;
     }
 
     fn calculated_movement(&self, row: usize, col: usize) -> isize{
-            let left = if col>=1 {self.penalty(self.matrix[(row, col-1)], self.missed)} else {0};
-            let top = if row>=1 {self.penalty(self.matrix[(row-1, col)], self.missed)} else {0};
-            let diagonal_value = if row>=1 && col>=1 {self.matrix[(row-1, col-1)]} else {0};
-            let diagonal_match = if row == 0 || col == 0{
-               0
-            }else if self.read_sequence.char_at(row-1) == self.genome_sequence.char_at(col-1){
-                self.penalty(diagonal_value, self.matched)
-            }else{
-                self.penalty(diagonal_value, self.missed)
-            };
-            std::cmp::max(left, std::cmp::max(top, diagonal_match))
+        let left = if col>=1 {self.penalty(self.matrix[(row, col-1)], self.missed)} else {0};
+        let top = if row>=1 {self.penalty(self.matrix[(row-1, col)], self.missed)} else {0};
+        let diagonal_value = if row>=1 && col>=1 {self.matrix[(row-1, col-1)]} else {0};
+        let diagonal_match = if row == 0 || col == 0{
+            0
+        }else if self.read_sequence.get(row-1).unwrap() == self.genome_sequence.get(col-1).unwrap(){
+            self.penalty(diagonal_value, self.matched)
+        }else{
+            self.penalty(diagonal_value, self.missed)
+        };
+        std::cmp::max(left, std::cmp::max(top, diagonal_match))
     }
 
     /// Fills the matrix with values.
@@ -133,8 +148,9 @@ impl SmithWaterman{
     ///
     /// returns a tuple of usize. The fist is the row and the second is the column of the largest
     /// value in the matrix.
-    ///
     /// This value can also be calculated out from `smitty.matrix`
+    ///
+    /// Faster in smaller sets: https://gist.github.com/sbeckeriv/d9d2c03b19178a888c32
     /// # Examples
     ///
     /// ```
@@ -162,14 +178,12 @@ impl SmithWaterman{
         let mut max_point = max_point_value;
         let mut max = self.matrix[max_point];
         let mut last_movement = GraphMovements::Blank;
-        let mut genome_sequence_alignment = String::new();
-        let mut read_sequence_alignment = String::new();
-        genome_sequence_alignment.reserve(self.genome_sequence.len());
-        read_sequence_alignment.reserve(self.read_sequence.len());
+        let mut genome_sequence_alignment: Vec<char> =  Vec::with_capacity(self.genome_sequence.len());
+        let mut read_sequence_alignment: Vec<char> =  Vec::with_capacity(self.read_sequence.len());
         while max > 0 {
             let (row, col) = max_point;
-            let one = self.genome_sequence.char_at(col-1);
-            let two = self.read_sequence.char_at(row-1);
+            let one = self.genome_sequence.get(col-1).unwrap().clone();
+            let two = self.read_sequence.get(row-1).unwrap().clone();
             let top = self.matrix[(row-1, col)];
             let left = self.matrix[(row, col-1)];
             let diagonal = self.matrix[(row-1, col-1)];
@@ -204,9 +218,10 @@ impl SmithWaterman{
                 },
             }
         };
-
-        let x1: String = genome_sequence_alignment.chars().rev().collect();
-        let x2: String = read_sequence_alignment.chars().rev().collect();
+        genome_sequence_alignment.reverse();
+        let x1: String = genome_sequence_alignment.into_iter().collect();
+        read_sequence_alignment.reverse();
+        let x2: String = read_sequence_alignment.into_iter().collect();
         return (x1,x2)
     }
 }
@@ -217,9 +232,9 @@ impl Debug for SmithWaterman {
         for row in 0..self.matrix.nrows()+1 {
             for col in 0..self.matrix.ncols()+1 {
                 let _ = if col==0 && row>1{
-                    write!(form, "{:>5}", self.read_sequence.char_at(row-2).to_string())
+                    write!(form, "{:>5}", self.read_sequence.get(row-2).unwrap().to_string())
                 } else if row==0 && col>1{
-                    write!(form, "{:>5}", self.genome_sequence.char_at(col-2).to_string())
+                    write!(form, "{:>5}", self.genome_sequence.get(col-2).unwrap().to_string())
                 } else if row>=1 && col>=1{
                     write!(form, "{:>5}", self.matrix[(row-1,col-1)])
                 }else{
@@ -239,7 +254,8 @@ fn its_debugging() {
     println!("{:?}", smitty);
     println!("{:?}", alignment);
 
-    let mut smitty = SmithWaterman::new( "ACACACTA".to_string(),"AGCACACA".to_string());
+    let mut smitty =
+        SmithWaterman::new_chars("ACACACTA".chars().collect(),"AGCACACA".chars().collect());
     let alignment = smitty.align_fn();
     println!("fn::{:?}", smitty);
     println!("fn::{:?}", alignment);
