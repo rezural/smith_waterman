@@ -28,6 +28,12 @@ pub struct SmithWaterman {
 }
 pub enum GraphMovements {Blank, Left, Top, Diagonal}
 
+struct SmithWatermanThread{
+    row: usize,
+    col: usize,
+    value: isize
+}
+
 impl SmithWaterman{
     /// Constructs a new `SmithWaterman`.
     ///
@@ -69,7 +75,7 @@ impl SmithWaterman{
     /// let mut smitty = smith_waterman::SmithWaterman::new_threads("ab".chars().collect(), "cb".chars().collect());
     /// ```
     pub fn new_threads(genome_sequence: Vec<char>, read_sequence: Vec<char>) -> SmithWaterman {
-        let matrix = nalgebra::DMat::new_zeros(read_sequence.len()+1, genome_sequence.len()+1);
+        let mut matrix = nalgebra::DMat::new_zeros(read_sequence.len()+1, genome_sequence.len()+1);
         let shared_matrix = Arc::new(matrix);
         let shared_genome = Arc::new(genome_sequence);
         let shared_read = Arc::new(read_sequence);
@@ -86,25 +92,24 @@ impl SmithWaterman{
             let thread_read = shared_read.clone();
             let guard = thread::spawn(|| {
                 for thread_data in fromParentReceiver{
-                    let (row, col) = (0,9);//thread_data;
-                    let matched = thread_genome.get(row-1).unwrap() ==
-                thread_read.get(col-1).unwrap();
-                    let n = SmithWaterman::threaded_calculated_movement(&thread_matrix, matched,  row, col, 0-1, 2);
-                    thread_sender.send(1);
+                    let data: SmithWatermanThread = thread_data;
+                    let matched = thread_genome.get(data.row-1).unwrap() ==
+                thread_read.get(data.col-1).unwrap();
+                    let value = SmithWaterman::threaded_calculated_movement(&thread_matrix, matched,  data.row, data.col, 0-1, 2);
+                    thread_sender.send(SmithWatermanThread{row: data.row, col: data.col, value: value});
                 }
             });
         }
 
-        fromParentSender.send(1);
+        fromParentSender.send(SmithWatermanThread{row:0 , col:0, value: 0});
 
         loop{
-            let x = fromChildReceiver.recv().unwrap();
-            let (row, col, value) = (2,3,4);
-            if value >= max{
-                max = value;
-                max_point = (row, col);
+            let data: SmithWatermanThread = fromChildReceiver.recv().unwrap();
+            if data.value >= max{
+                max = data.value;
+                max_point = (data.row, data.col);
             }
-            matrix[(row, col)] = value;
+            matrix[(data.row, data.col)] = data.value;
             break;
         }
 
