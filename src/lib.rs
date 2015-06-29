@@ -2,6 +2,13 @@ extern crate nalgebra;
 use nalgebra::DMat;
 use std::fmt::{Debug, Formatter, Result};
 
+use std::sync::Arc;
+use std::sync::mpsc::{channel, Sender, Receiver};
+use std::thread;
+use std::sync::mpsc;
+use std::collections::HashSet;
+
+
 /// The `SmithWaterman` struct
 ///
 /// genome_sequence: String
@@ -50,6 +57,84 @@ impl SmithWaterman{
         let matrix = DMat::new_zeros(0,0);
         SmithWaterman{matrix: matrix, genome_sequence: genome_sequence,
         read_sequence: read_sequence, matched: 2, missed: -1}
+    }
+
+    /// Constructs and fills a new `SmithWaterman`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use smith_waterman;
+    ///
+    /// let mut smitty = smith_waterman::SmithWaterman::new_threads("ab".chars().collect(), "cb".chars().collect());
+    /// ```
+    pub fn new_threads(genome_sequence: Vec<char>, read_sequence: Vec<char>) -> SmithWaterman {
+        let matrix = nalgebra::DMat::new_zeros(read_sequence.len()+1, genome_sequence.len()+1);
+        let shared_matrix = Arc::new(matrix);
+        let shared_genome = Arc::new(genome_sequence);
+        let shared_read = Arc::new(read_sequence);
+        let mut max_point = (0,0);
+        let mut max = 0;
+        let thread_counter = 0;
+        let seen_locations: HashSet<(usize, usize)> = HashSet::new();
+        let (fromParentSender, fromParentReceiver) = channel();
+        let (fromChildSender, fromChildReceiver) = channel();
+        for id in 0..2 {
+            let thread_sender = fromChildSender.clone();
+            let thread_matrix = shared_matrix.clone();
+            let thread_genome = shared_genome.clone();
+            let thread_read = shared_read.clone();
+            let guard = thread::spawn(|| {
+                for thread_data in fromParentReceiver{
+                    let (row, col) = (0,9);//thread_data;
+                    let matched = thread_genome.get(row-1).unwrap() ==
+                thread_read.get(col-1).unwrap();
+                    let n = SmithWaterman::threaded_calculated_movement(&thread_matrix, matched,  row, col, 0-1, 2);
+                    thread_sender.send(1);
+                }
+            });
+        }
+
+        fromParentSender.send(1);
+
+        loop{
+            let x = fromChildReceiver.recv().unwrap();
+            let (row, col, value) = (2,3,4);
+            if value >= max{
+                max = value;
+                max_point = (row, col);
+            }
+            matrix[(row, col)] = value;
+            break;
+        }
+
+
+        SmithWaterman{matrix: matrix, genome_sequence: genome_sequence,
+        read_sequence: read_sequence, matched: 2, missed: 0-1}
+    }
+
+    fn threaded_calculated_movement(matrix: &DMat<isize>, matches: bool, row: usize, col: usize, missed: isize, matched: isize) ->
+        isize{
+        let left = if col>=1 {SmithWaterman::penalty_thread(matrix[(row, col-1)], missed)} else {0};
+        let top = if row>=1 {SmithWaterman::penalty_thread(matrix[(row-1, col)], missed)} else {0};
+        let diagonal_value = if row>=1 && col>=1 {matrix[(row-1, col-1)]} else {0};
+        let diagonal_match = if row == 0 || col == 0{
+            0
+        }else if matches{
+            SmithWaterman::penalty_thread(diagonal_value, matched)
+        }else{
+            SmithWaterman::penalty_thread(diagonal_value, missed)
+        };
+        std::cmp::max(left, std::cmp::max(top, diagonal_match))
+    }
+
+    fn penalty_thread(value: isize, penalty_value: isize) -> isize{
+        match value.checked_add(penalty_value){
+            Some(i) =>{
+                if i<0 { 0 }else { i }
+            },
+            _ => {0}
+        }
     }
 
     fn penalty(&self, value: isize, penalty_value: isize) -> isize{
