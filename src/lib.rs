@@ -1,6 +1,10 @@
 extern crate nalgebra;
+extern crate threadpool;
+use std::sync::mpsc::channel;
+use threadpool::ThreadPool;
 use nalgebra::DMat;
 use std::fmt::{Debug, Formatter, Result};
+
 
 /// The `SmithWaterman` struct
 ///
@@ -22,6 +26,57 @@ pub struct SmithWaterman {
 pub enum GraphMovements {Blank, Left, Top, Diagonal}
 
 impl SmithWaterman{
+    fn penalty_thread(value: isize, penalty_value: isize) -> isize{
+                match value.checked_add(penalty_value){
+                                Some(i) =>{
+                                                    if i<0 { 0 }else { i }
+                                                                },
+                                                                            _ => {0}
+                                        }
+                    }
+    pub fn new_thread(genome_sequence: Vec<char>, read_sequence: Vec<char>) -> SmithWaterman {
+        let mut matrix = nalgebra::DMat::new_zeros(read_sequence.len()+1, genome_sequence.len()+1);
+        let pool = ThreadPool::new(2);
+        let mut queued:Vec<(usize, usize, isize)> = Vec::new();
+        let (tx, rx) = channel();
+        queued.push((0,0,0));
+        while queued.len()>0{
+            while let Some(point) = queued.pop(){
+                let tx = tx.clone();
+                let thread_point = point.clone();
+                let (lrow, lcol, lvalue) = thread_point;
+                let thread_matrix = matrix.clone();
+                let thread_matched = genome_sequence.get(lrow-1).unwrap() ==
+                                    read_sequence.get(lcol-1).unwrap();
+                pool.execute(move|| {
+                    let (row, col, value) = thread_point;
+                    let missed = 0-1;
+                    let matched = 2;
+                    let left = if col>=1 {SmithWaterman::penalty_thread(thread_matrix[(row, col-1)], missed)} else {0};
+                    let top = if row>=1 {SmithWaterman::penalty_thread(thread_matrix[(row-1, col)], missed)} else {0};
+                    let diagonal_value = if row>=1 && col>=1 {thread_matrix[(row-1, col-1)]} else {0};
+                    let diagonal_match = if row == 0 || col == 0{
+                        0
+                    }else if thread_matched{
+                        SmithWaterman::penalty_thread(diagonal_value, matched)
+                    }else{
+                        SmithWaterman::penalty_thread(diagonal_value, missed)
+                    };
+                    let number = std::cmp::max(left, std::cmp::max(top, diagonal_match));
+                    tx.send((row, col, number));
+                });
+            }
+            for response in rx.iter() {
+                let (row, col, value) = response;
+                matrix[(row,col)] = value;
+                queued.push((0,0,0));
+            }
+        };
+
+        SmithWaterman{matrix: matrix, genome_sequence: genome_sequence,
+        read_sequence: read_sequence, matched: 2, missed: -1}
+    }
+
     /// Constructs a new `SmithWaterman`.
     ///
     /// # Examples
