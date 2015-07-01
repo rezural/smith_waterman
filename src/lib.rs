@@ -13,11 +13,11 @@ use std::fmt::{Debug, Formatter, Result};
 /// read_sequence: String
 ///
 /// matrix:  DMat<isize>
-pub struct SmithWaterman {
+pub struct SmithWaterman<'a>{
     /// Genome
-    pub genome_sequence: Vec<char>,
+    pub genome_sequence: &'a Vec<char>,
     /// Compared Genome
-    pub  read_sequence:  Vec<char>,
+    pub  read_sequence:  &'a Vec<char>,
     /// Matrix used to store data
     pub matrix:  DMat<isize>,
     pub matched: isize,
@@ -25,7 +25,7 @@ pub struct SmithWaterman {
 }
 pub enum GraphMovements {Blank, Left, Top, Diagonal}
 
-impl SmithWaterman{
+impl<'a> SmithWaterman<'a>{
     fn penalty_thread(value: isize, penalty_value: isize) -> isize{
         match value.checked_add(penalty_value){
             Some(i) =>{
@@ -34,11 +34,11 @@ impl SmithWaterman{
             _ => {0}
         }
     }
-    pub fn new_thread(genome_sequence: Vec<char>, read_sequence: Vec<char>, thread_pool_size: usize) -> SmithWaterman {
+    pub fn new_thread(genome_sequence: &'a Vec<char>, read_sequence: &'a Vec<char>, thread_pool_size: usize) -> SmithWaterman<'a> {
         let mut max_point = (0,0);
         let mut max = 0;
         let mut matrix = nalgebra::DMat::new_zeros(read_sequence.len()+1, genome_sequence.len()+1);
-        let pool = ThreadPool::new(thread_pool_size);
+        let pool = ThreadPool::new(std::cmp::max(genome_sequence.len(), read_sequence.len()));
         let mut queued:Vec<(usize, usize, isize)> = Vec::new();
         let mut thread_count = 0;
         let (tx, rx) = channel();
@@ -84,10 +84,10 @@ impl SmithWaterman{
                     max_point = (row, col);
                 }
                 matrix[(row,col)] = value;
-                if (row==0&&col==0) || (col==1 && row+1<matrix.nrows()){
+                if (col==1 && row+1<matrix.nrows()){
                     queued.push((row+1,col,0));
-                }
-                if (row==0&&col==0) || col+1<matrix.ncols(){
+                    queued.push((row,col+1,0));
+                } else if col+1<matrix.ncols(){
                     queued.push((row,col+1,0));
                 }
             }
@@ -103,25 +103,11 @@ impl SmithWaterman{
     ///
     /// ```
     /// use smith_waterman;
-    ///
-    /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let g = "ab".chars().collect();
+    /// let r = "ab".chars().collect();
+    /// let mut smitty = smith_waterman::SmithWaterman::new(&g, &r);
     /// ```
-    pub fn new(genome_sequence: String, read_sequence: String) -> SmithWaterman {
-        let matrix = DMat::new_zeros(0,0);
-        SmithWaterman{matrix: matrix, genome_sequence: genome_sequence.chars().collect(),
-        read_sequence: read_sequence.chars().collect(), matched: 2, missed: -1}
-    }
-
-    /// Constructs a new `SmithWaterman`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use smith_waterman;
-    ///
-    /// let mut smitty = smith_waterman::SmithWaterman::new_chars("ab".chars().collect(), "cb".chars().collect());
-    /// ```
-    pub fn new_chars(genome_sequence: Vec<char>, read_sequence: Vec<char>) -> SmithWaterman {
+    pub fn new(genome_sequence: &'a Vec<char>, read_sequence: &'a Vec<char>) -> SmithWaterman<'a>{
         let matrix = DMat::new_zeros(0,0);
         SmithWaterman{matrix: matrix, genome_sequence: genome_sequence,
         read_sequence: read_sequence, matched: 2, missed: -1}
@@ -144,7 +130,9 @@ impl SmithWaterman{
     /// # Examples
     ///
     /// ```
-    /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let g = "ab".chars().collect();
+    /// let r = "ab".chars().collect();
+    /// let mut smitty = smith_waterman::SmithWaterman::new(&g, &r);
     /// let alignment = smitty.align();
     /// ```
     pub fn align(&mut self) -> (String, String){
@@ -163,7 +151,9 @@ impl SmithWaterman{
     /// # Examples
     ///
     /// ```
-    /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let g = "ab".chars().collect();
+    /// let r = "ab".chars().collect();
+    /// let mut smitty = smith_waterman::SmithWaterman::new(&g, &r);
     /// let alignment = smitty.align_fn();
     /// ```
     pub fn align_fn(&mut self) -> (String, String){
@@ -182,7 +172,9 @@ impl SmithWaterman{
     ///
     /// # Examples
     /// ```
-    /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let g = "ab".chars().collect();
+    /// let r = "ab".chars().collect();
+    /// let mut smitty = smith_waterman::SmithWaterman::new(&g, &r);
     /// let max_point = smitty.set_matrix_fn();
     /// ```
     pub fn set_matrix_fn(&mut self) -> (usize, usize) {
@@ -229,7 +221,9 @@ impl SmithWaterman{
     /// # Examples
     ///
     /// ```
-    /// let mut smitty = smith_waterman::SmithWaterman::new("ab".to_string(), "cb".to_string());
+    /// let g = "ab".chars().collect();
+    /// let r = "ab".chars().collect();
+    /// let mut smitty = smith_waterman::SmithWaterman::new(&g, &r);
     /// let max_point = smitty.set_matrix_loops();
     /// ```
     pub fn set_matrix_loops(&mut self) -> (usize, usize) {
@@ -301,7 +295,7 @@ impl SmithWaterman{
     }
 }
 
-impl Debug for SmithWaterman {
+impl<'a> Debug for SmithWaterman<'a> {
     fn fmt(&self, form:&mut Formatter) -> Result {
         //nrows already has an extra over the sequence counts for the row of zeros
         for row in 0..self.matrix.nrows()+1 {
@@ -324,17 +318,16 @@ impl Debug for SmithWaterman {
 
 #[test]
 fn its_debugging() {
-    let mut smitty = SmithWaterman::new("atgcatgcatgc".to_string(), "atgggcatg".to_string());
-    let alignment = smitty.align();
-    println!("{:?}", smitty);
-    println!("{:?}", alignment);
-
-    let mut smitty =
-        SmithWaterman::new_chars("ACACACTA".chars().collect(),"AGCACACA".chars().collect());
+    let g = "ACACACTA".chars().collect();
+    let r = "AGCACACA".chars().collect();
+    let mut smitty = SmithWaterman::new(&g,&r);
     let alignment = smitty.align_fn();
     println!("fn::{:?}", smitty);
     println!("fn::\n{:?}", alignment);
+
+    let g = "ACACACTA".chars().collect();
+    let r = "AGCACACA".chars().collect();
     let mut smitty =
-        SmithWaterman::new_thread("ACACACTA".chars().collect(),"AGCACACA".chars().collect(), 16);
+        SmithWaterman::new_thread(&g,&r, 16);
     println!("fn::\n{:?}", smitty);
 }
