@@ -26,6 +26,7 @@ mod tests{
     fn read_sequence() -> String{
         "AAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAAGCACACAGCACACA".to_string()
     }
+    /*
     #[bench]
     fn bench_maxtrix_loops(b: &mut Bencher) {
         let mut smitty = SmithWaterman::new(genome_sequence(), read_sequence());
@@ -57,5 +58,26 @@ mod tests{
         let mut smitty = SmithWaterman::new(genome_sequence_many(10_000), read_sequence_many(1_000));
         b.iter(|| smitty.set_matrix_fn());
     }
+    */
+    #[bench]
+    fn bench_maxtrix_thread(b: &mut Bencher) {
+        let g: Vec<char>= genome_sequence().chars().collect();
+        let r: Vec<char>= read_sequence().chars().collect();
+        b.iter(|| SmithWaterman::new_thread(g.clone(),r.clone(), 16));
+    }
+    /*
+    #[bench]
+    fn bench_maxtrix_thread_many(b: &mut Bencher) {
+        let g= genome_sequence_many(1_000).chars().collect();
+        let r= read_sequence_many(1_000).chars().collect();
+        b.iter(|| SmithWaterman::new_thread(g, r));
+    }
+    #[bench]
+    fn bench_maxtrix_fn_many_many(b: &mut Bencher) {
+        let g= genome_sequence_many(10_000).chars().collect();
+        let r= read_sequence_many(1_000).chars().collect();
+        b.iter(|| SmithWaterman::new_thread(g, r));
+    }
+    */
 }
 

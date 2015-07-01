@@ -27,30 +27,40 @@ pub enum GraphMovements {Blank, Left, Top, Diagonal}
 
 impl SmithWaterman{
     fn penalty_thread(value: isize, penalty_value: isize) -> isize{
-                match value.checked_add(penalty_value){
-                                Some(i) =>{
-                                                    if i<0 { 0 }else { i }
-                                                                },
-                                                                            _ => {0}
-                                        }
-                    }
-    pub fn new_thread(genome_sequence: Vec<char>, read_sequence: Vec<char>) -> SmithWaterman {
+        match value.checked_add(penalty_value){
+            Some(i) =>{
+                if i<0 { 0 }else { i }
+            },
+            _ => {0}
+        }
+    }
+    pub fn new_thread(genome_sequence: Vec<char>, read_sequence: Vec<char>, thread_pool_size: usize) -> SmithWaterman {
+        let mut max_point = (0,0);
+        let mut max = 0;
         let mut matrix = nalgebra::DMat::new_zeros(read_sequence.len()+1, genome_sequence.len()+1);
-        let pool = ThreadPool::new(2);
+        let pool = ThreadPool::new(thread_pool_size);
         let mut queued:Vec<(usize, usize, isize)> = Vec::new();
+        let mut thread_count = 0;
         let (tx, rx) = channel();
-        queued.push((0,0,0));
+        queued.push((1,1,0));
         while queued.len()>0{
+            thread_count = 0;
             while let Some(point) = queued.pop(){
                 let tx = tx.clone();
                 let thread_point = point.clone();
                 let (lrow, lcol, lvalue) = thread_point;
                 let thread_matrix = matrix.clone();
-                let thread_matched = genome_sequence.get(lrow-1).unwrap() ==
-                                    read_sequence.get(lcol-1).unwrap();
+                thread_count +=1;
+                if lrow ==0 || lcol==0{
+                    tx.send((lrow, lcol, 0));
+                    continue;
+                }
+
+                let thread_matched =  genome_sequence.get(lcol-1).unwrap()==
+                    read_sequence.get(lrow-1).unwrap();
                 pool.execute(move|| {
                     let (row, col, value) = thread_point;
-                    let missed = 0-1;
+                    let missed = -1;
                     let matched = 2;
                     let left = if col>=1 {SmithWaterman::penalty_thread(thread_matrix[(row, col-1)], missed)} else {0};
                     let top = if row>=1 {SmithWaterman::penalty_thread(thread_matrix[(row-1, col)], missed)} else {0};
@@ -66,10 +76,20 @@ impl SmithWaterman{
                     tx.send((row, col, number));
                 });
             }
-            for response in rx.iter() {
+            for _ in (0..thread_count) {
+                let response = rx.recv().unwrap();
                 let (row, col, value) = response;
+                if value >= max{
+                    max = value;
+                    max_point = (row, col);
+                }
                 matrix[(row,col)] = value;
-                queued.push((0,0,0));
+                if (row==0&&col==0) || (col==1 && row+1<matrix.nrows()){
+                    queued.push((row+1,col,0));
+                }
+                if (row==0&&col==0) || col+1<matrix.ncols(){
+                    queued.push((row,col+1,0));
+                }
             }
         };
 
@@ -313,6 +333,8 @@ fn its_debugging() {
         SmithWaterman::new_chars("ACACACTA".chars().collect(),"AGCACACA".chars().collect());
     let alignment = smitty.align_fn();
     println!("fn::{:?}", smitty);
-    println!("fn::{:?}", alignment);
-
+    println!("fn::\n{:?}", alignment);
+    let mut smitty =
+        SmithWaterman::new_thread("ACACACTA".chars().collect(),"AGCACACA".chars().collect(), 16);
+    println!("fn::\n{:?}", smitty);
 }
