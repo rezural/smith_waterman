@@ -49,7 +49,7 @@ impl<'a> SmithWaterman<'a>{
                 let tx = tx.clone();
                 let thread_point = point.clone();
                 let (lrow, lcol, lvalue) = thread_point;
-                let thread_matrix = matrix.clone();
+
                 thread_count +=1;
                 if lrow ==0 || lcol==0{
                     tx.send((lrow, lcol, 0));
@@ -59,12 +59,14 @@ impl<'a> SmithWaterman<'a>{
                 let thread_matched =  genome_sequence.get(lcol-1).unwrap()==
                     read_sequence.get(lrow-1).unwrap();
                 pool.execute(move|| {
+                    unsafe{
+                    let thread_matrix =  &matrix as *const DMat<isize>;
                     let (row, col, value) = thread_point;
                     let missed = -1;
                     let matched = 2;
-                    let left = if col>=1 {SmithWaterman::penalty_thread(thread_matrix[(row, col-1)], missed)} else {0};
-                    let top = if row>=1 {SmithWaterman::penalty_thread(thread_matrix[(row-1, col)], missed)} else {0};
-                    let diagonal_value = if row>=1 && col>=1 {thread_matrix[(row-1, col-1)]} else {0};
+                    let left = if col>=1 {SmithWaterman::penalty_thread(&*thread_matrix[(row, col-1)], missed)} else {0};
+                    let top = if row>=1 {SmithWaterman::penalty_thread(&*thread_matrix[(row-1, col)], missed)} else {0};
+                    let diagonal_value = if row>=1 && col>=1 {&*thread_matrix[(row-1, col-1)]} else {0};
                     let diagonal_match = if row == 0 || col == 0{
                         0
                     }else if thread_matched{
@@ -74,6 +76,7 @@ impl<'a> SmithWaterman<'a>{
                     };
                     let number = std::cmp::max(left, std::cmp::max(top, diagonal_match));
                     tx.send((row, col, number));
+                    }
                 });
             }
             for _ in (0..thread_count) {
