@@ -86,12 +86,13 @@ impl<'a> SmithWaterman<'a>{
                     max = value;
                     max_point = (row, col);
                 }
-                let update_matrix = arc_matrix.clone().write().unwrap();
-                update_matrix[(row,col)] = value;
-                if (col==1 && row+1<matrix.nrows()){
+                let update_matrix = arc_matrix.clone();
+                update_matrix.write().unwrap()[(row,col)] = value;
+
+                if (col==1 && row+1<read_sequence.len()+1){
                     queued.push((row+1,col,0));
                     queued.push((row,col+1,0));
-                } else if col+1<matrix.ncols(){
+                } else if col+1<genome_sequence.len()+1{
                     queued.push((row,col+1,0));
                 }
             }
