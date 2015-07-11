@@ -53,7 +53,6 @@ mod tests{
     }
     #[bench]
     fn bench_maxtrix_fn(b: &mut Bencher) {
-    return;
         let g = genome_sequence().chars().collect();
         let r = genome_sequence().chars().collect();
         let mut smitty = SmithWaterman::new(&g, &r);
