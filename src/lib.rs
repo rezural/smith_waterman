@@ -1,6 +1,7 @@
 extern crate nalgebra;
 extern crate threadpool;
 use std::sync::mpsc::channel;
+use std::sync::{Arc, RwLock};
 use threadpool::ThreadPool;
 use nalgebra::DMat;
 use std::fmt::{Debug, Formatter, Result};
@@ -42,6 +43,7 @@ impl<'a> SmithWaterman<'a>{
         let mut queued:Vec<(usize, usize, isize)> = Vec::new();
         let mut thread_count = 0;
         let (tx, rx) = channel();
+        let arc_matrix = Arc::new(RwLock::new(matrix));
         queued.push((1,1,0));
         while queued.len()>0{
             thread_count = 0;
@@ -56,17 +58,16 @@ impl<'a> SmithWaterman<'a>{
                     continue;
                 }
 
+                let thread_matrix =  arc_matrix.clone();
                 let thread_matched =  genome_sequence.get(lcol-1).unwrap()==
                     read_sequence.get(lrow-1).unwrap();
                 pool.execute(move|| {
-                    unsafe{
-                    let thread_matrix =  &matrix as *const DMat<isize>;
                     let (row, col, value) = thread_point;
                     let missed = -1;
                     let matched = 2;
-                    let left = if col>=1 {SmithWaterman::penalty_thread(&*thread_matrix[(row, col-1)], missed)} else {0};
-                    let top = if row>=1 {SmithWaterman::penalty_thread(&*thread_matrix[(row-1, col)], missed)} else {0};
-                    let diagonal_value = if row>=1 && col>=1 {&*thread_matrix[(row-1, col-1)]} else {0};
+                    let left = if col>=1 {SmithWaterman::penalty_thread(thread_matrix.read().unwrap()[(row, col-1)], missed)} else {0};
+                    let top = if row>=1 {SmithWaterman::penalty_thread(thread_matrix.read().unwrap()[(row-1, col)], missed)} else {0};
+                    let diagonal_value = if row>=1 && col>=1 {thread_matrix.read().unwrap()[(row-1, col-1)]} else {0};
                     let diagonal_match = if row == 0 || col == 0{
                         0
                     }else if thread_matched{
@@ -76,7 +77,6 @@ impl<'a> SmithWaterman<'a>{
                     };
                     let number = std::cmp::max(left, std::cmp::max(top, diagonal_match));
                     tx.send((row, col, number));
-                    }
                 });
             }
             for _ in (0..thread_count) {
