@@ -79,15 +79,15 @@ impl<'a> SmithWaterman<'a>{
                     tx.send((row, col, number));
                 });
             }
+            let update_matrix: DMat<isize> = arc_matrix.clone().write().lock().unwrap();
             for _ in (0..thread_count) {
-                let update_matrix = arc_matrix.clone();
                 let response = rx.recv().unwrap();
                 let (row, col, value) = response;
                 if value >= max{
                     max = value;
                     max_point = (row, col);
                 }
-                update_matrix.write().lock()[(row,col)] = value;
+                update_matrix[(row,col)] = value;
                 if (col==1 && row+1<matrix.nrows()){
                     queued.push((row+1,col,0));
                     queued.push((row,col+1,0));
