@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 use threadpool::ThreadPool;
 use nalgebra::DMat;
 use std::fmt::{Debug, Formatter, Result};
+use nalgebra::{RowSlice, ColSlice};
 
 
 /// The `SmithWaterman` struct
@@ -39,12 +40,10 @@ impl<'a> SmithWaterman<'a>{
         let mut max_point = (0,0);
         let mut max = 0;
         let mut matrix = nalgebra::DMat::new_zeros(read_sequence.len()+1, genome_sequence.len()+1);
-        let mut matrix2 = nalgebra::DMat::new_zeros(read_sequence.len()+1, genome_sequence.len()+1);
-        let pool = ThreadPool::new(std::cmp::max(genome_sequence.len(), read_sequence.len()));
+        let pool = ThreadPool::new(thread_pool_size);
         let mut queued:Vec<(usize, usize, isize)> = Vec::new();
         let mut thread_count = 0;
         let (tx, rx) = channel();
-        let arc_matrix = Arc::new(RwLock::new(matrix));
         queued.push((1,1,0));
         while queued.len()>0{
             thread_count = 0;
@@ -59,16 +58,19 @@ impl<'a> SmithWaterman<'a>{
                     continue;
                 }
 
-                let thread_matrix =  arc_matrix.clone();
                 let thread_matched =  genome_sequence.get(lcol-1).unwrap()==
                     read_sequence.get(lrow-1).unwrap();
+                let thread_slice_col = matrix.col_slice(lcol-1, lrow-1, lrow+1);
+                let thread_slice_row = matrix[(lcol-1, lcol)];
                 pool.execute(move|| {
+                //println!("col:{} {} {} {:?}",lcol-1, lrow-1, lrow+1,  thread_slice_col);
+                //println!("row:{} {} {} {:?}", lrow-1,lcol-1,lcol+1, thread_slice_row);
                     let (row, col, value) = thread_point;
                     let missed = -1;
                     let matched = 2;
-                    let left = if col>=1 {SmithWaterman::penalty_thread(thread_matrix.read().unwrap()[(row, col-1)], missed)} else {0};
-                    let top = if row>=1 {SmithWaterman::penalty_thread(thread_matrix.read().unwrap()[(row-1, col)], missed)} else {0};
-                    let diagonal_value = if row>=1 && col>=1 {thread_matrix.read().unwrap()[(row-1, col-1)]} else {0};
+                    let left = if col>=1 {SmithWaterman::penalty_thread(thread_slice_col[1], missed)} else {0};
+                    let top = if row>=1 {SmithWaterman::penalty_thread(thread_slice_row, missed)} else {0};
+                    let diagonal_value = if row>=1 && col>=1 {thread_slice_col[0]} else {0};
                     let diagonal_match = if row == 0 || col == 0{
                         0
                     }else if thread_matched{
@@ -87,8 +89,7 @@ impl<'a> SmithWaterman<'a>{
                     max = value;
                     max_point = (row, col);
                 }
-                let update_matrix = arc_matrix.clone();
-                update_matrix.write().unwrap()[(row,col)] = value;
+                matrix[(row,col)] = value;
 
                 if (col==1 && row+1<read_sequence.len()+1){
                     queued.push((row+1,col,0));
@@ -99,7 +100,7 @@ impl<'a> SmithWaterman<'a>{
             }
         };
 
-        SmithWaterman{matrix: matrix2, genome_sequence: genome_sequence,
+        SmithWaterman{matrix: matrix, genome_sequence: genome_sequence,
         read_sequence: read_sequence, matched: 2, missed: -1}
     }
 
@@ -335,5 +336,5 @@ fn its_debugging() {
     let r = "AGCACACA".chars().collect();
     let mut smitty =
         SmithWaterman::new_thread(&g,&r, 16);
-    println!("fn::\n{:?}", smitty);
+    println!("fn::thread\n{:?}", smitty);
 }

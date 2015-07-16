@@ -77,6 +77,7 @@ mod tests{
     }
     #[bench]
     fn bench_maxtrix_thread(b: &mut Bencher) {
+        return;
         let g: Vec<char>= genome_sequence().chars().collect();
         let r: Vec<char>= read_sequence().chars().collect();
         b.iter(|| SmithWaterman::new_thread(&g,&r, 32));
@@ -85,7 +86,7 @@ mod tests{
     fn bench_maxtrix_thread_many(b: &mut Bencher) {
         let g= genome_sequence_many(1_000).chars().collect();
         let r= read_sequence_many(1_000).chars().collect();
-        b.iter(|| SmithWaterman::new_thread(&g,&r, 32));
+        b.iter(|| SmithWaterman::new_thread(&g,&r, 2000));
     }
     #[bench]
     fn bench_maxtrix_thread_many_many(b: &mut Bencher) {
