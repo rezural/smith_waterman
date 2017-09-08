@@ -14,6 +14,7 @@ license = "MIT"
 [dependencies]
 nalgebra = "0.2.17"
 
+[badges]
 maintenance = { status = "deprecated" }
 
 [profile.bench]
