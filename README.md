@@ -1,3 +1,5 @@
+[DEPERCATED]
+
 # Smith Waterman
 Smith–Waterman algorithm
 
